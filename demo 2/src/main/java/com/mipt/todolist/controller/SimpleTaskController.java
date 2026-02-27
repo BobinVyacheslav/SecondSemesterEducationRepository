@@ -1,7 +1,7 @@
-package com.mipt.controller;
+package com.mipt.todolist.controller;
 
-import com.mipt.model.Task;
-import com.mipt.service.TaskService;
+import com.mipt.todolist.model.Task;
+import com.mipt.todolist.service.TaskService;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;

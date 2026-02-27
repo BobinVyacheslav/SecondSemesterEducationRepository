@@ -1,4 +1,4 @@
-package com.mipt.model;
+package com.mipt.todolist.model;
 
 import java.util.Objects;
 

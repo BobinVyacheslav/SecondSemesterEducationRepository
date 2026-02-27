@@ -1,4 +1,4 @@
-package com.mipt;
+package com.mipt.todolist;
 
 
 import org.springframework.boot.SpringApplication;

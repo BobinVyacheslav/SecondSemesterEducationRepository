@@ -1,8 +1,8 @@
-package com.mipt.repository;
+package com.mipt.todolist.repository;
 
 
 
-import com.mipt.model.Task;
+import com.mipt.todolist.model.Task;
 import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Repository;
 import java.util.*;

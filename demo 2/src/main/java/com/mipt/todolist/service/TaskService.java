@@ -1,7 +1,7 @@
-package com.mipt.service;
+package com.mipt.todolist.service;
 
-import com.mipt.model.Task;
-import com.mipt.repository.TaskRepository;
+import com.mipt.todolist.model.Task;
+import com.mipt.todolist.repository.TaskRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;

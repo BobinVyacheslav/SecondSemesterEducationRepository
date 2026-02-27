@@ -1,6 +1,6 @@
-package com.mipt.repository;
+package com.mipt.todolist.repository;
 
-import com.mipt.model.Task;
+import com.mipt.todolist.model.Task;
 
 import java.util.*;
 

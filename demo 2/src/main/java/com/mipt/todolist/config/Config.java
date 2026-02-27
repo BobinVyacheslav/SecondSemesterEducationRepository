@@ -1,8 +1,7 @@
-package com.mipt.config;
+package com.mipt.todolist.config;
 
-import com.mipt.model.Task;
-import com.mipt.repository.StubTaskRepository;
-import com.mipt.repository.TaskRepository;
+import com.mipt.todolist.repository.StubTaskRepository;
+import com.mipt.todolist.repository.TaskRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 

@@ -1,7 +1,7 @@
-package com.mipt.service;
+package com.mipt.todolist.service;
 
 
-import com.mipt.repository.TaskRepository;
+import com.mipt.todolist.repository.TaskRepository;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
