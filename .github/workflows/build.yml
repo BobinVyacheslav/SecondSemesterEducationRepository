@@ -23,3 +23,5 @@ jobs:
 
       - name: Build and run tests
         run: mvn clean verify
+      - name: run tests
+        run: mvn test
