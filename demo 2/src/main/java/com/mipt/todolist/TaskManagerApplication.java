@@ -3,6 +3,7 @@ package com.mipt.todolist;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
  * Основной класс запуска приложения Task Manager
@@ -10,6 +11,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * сканирование компонентов и поиск конфигурационных классов
  */
 @SpringBootApplication
+@EnableAspectJAutoProxy
 public class TaskManagerApplication {
 
   /**
