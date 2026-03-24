@@ -10,11 +10,11 @@ import java.util.*;
 public class StubTaskRepository implements TaskRepository {
   @Override
   public List<Task> findAll() {
-    return List.of(new Task("id", "matanaliz", "tyulenev", false));
+    return List.of(new Task(7L, "matanaliz", "tyulenev", false));
   }
 
   @Override
-  public Optional<Task> findById(String id) {
+  public Optional<Task> findById(Long id) {
     return findAll().stream().filter(t -> t.getId().equals(id)).findFirst();
   }
 
@@ -24,6 +24,6 @@ public class StubTaskRepository implements TaskRepository {
   }
 
   @Override
-  public void deleteById(String id) {
+  public void deleteById(Long id) {
   }
 }

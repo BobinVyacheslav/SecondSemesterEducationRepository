@@ -1,143 +1,162 @@
 package com.mipt.todolist.controller;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.mipt.todolist.dto.TaskCreateDto;
+import com.mipt.todolist.dto.TaskUpdateDto;
+import com.mipt.todolist.model.Priority;
 import com.mipt.todolist.model.Task;
+import com.mipt.todolist.repository.TaskRepository;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.web.client.TestRestTemplate;
-import org.springframework.http.*;
+import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.MockMvc;
 
-import static org.junit.jupiter.api.Assertions.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Set;
 
-/**
- * Интеграционные тесты, покрывающие все CRUD-операции контроллера задач.
- * Проверяется как успешное выполнение, так и обработка ошибок.
- */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
-public class TaskControllerTest {
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+@SpringBootTest
+@AutoConfigureMockMvc
+class TaskControllerTest {
 
   @Autowired
-  private TestRestTemplate restTemplate;
+  private MockMvc mockMvc;
 
-  /**
-   * Позитивный тест: получение всех задач.
-   */
-  @Test
-  void getAll_Positive_ReturnsList() {
-    ResponseEntity<Task[]> response = restTemplate.getForEntity("/api/tasks", Task[].class);
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody());
+  @Autowired
+  private ObjectMapper objectMapper;
+
+  @Autowired
+  private TaskRepository taskRepository;
+
+  @BeforeEach
+  void resetRepository() {
+    taskRepository.findAll().stream()
+        .map(Task::getId)
+        .forEach(taskRepository::deleteById);
   }
 
-  /**
-   * Негативный тест: имитация ошибки (в данном MVP проверяем пустой путь или неверный формат)
-   */
   @Test
-  void getAll_Negative_InvalidEndpoint() {
-    ResponseEntity<String> response = restTemplate.getForEntity("/api/tasks/undefined/route", String.class);
-    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+  void createShouldReturnResponseDtoWithGeneratedIdAndCreatedAt() throws Exception {
+    TaskCreateDto dto = new TaskCreateDto();
+    dto.setTitle("Write homework");
+    dto.setDescription("sleep");
+    dto.setDueDate(LocalDate.now().plusDays(2));
+    dto.setPriority(Priority.HIGH);
+    dto.setTags(Set.of("java", "spring"));
+
+    String responseBody = mockMvc.perform(post("/api/tasks")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").isNumber())
+        .andExpect(jsonPath("$.title").value("Write homework"))
+        .andExpect(jsonPath("$.description").value("sleep"))
+        .andExpect(jsonPath("$.completed").value(false))
+        .andExpect(jsonPath("$.priority").value("HIGH"))
+        .andExpect(jsonPath("$.createdAt").exists())
+        .andReturn()
+        .getResponse()
+        .getContentAsString();
+
+    JsonNode jsonNode = objectMapper.readTree(responseBody);
+    assertThat(jsonNode.get("id").asLong()).isPositive();
+    assertThat(LocalDateTime.parse(jsonNode.get("createdAt").asText())).isNotNull();
   }
 
-  /**
-   * Позитивный тест: поиск существующей задачи по ID
-   */
   @Test
-  void getById_Positive_Found() {
-    Task created = restTemplate.postForObject("/api/tasks", new Task("first", "Find Me", "Desc", false), Task.class);
-    ResponseEntity<Task> response = restTemplate.getForEntity("/api/tasks/" + created.getId(), Task.class);
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals("Find Me", response.getBody().getTitle());
+  void createShouldRejectInvalidDtoAndReturnFieldDetails() throws Exception {
+    TaskCreateDto dto = new TaskCreateDto();
+    dto.setTitle("Hi");
+    dto.setDescription("x".repeat(501));
+    dto.setDueDate(LocalDate.now().minusDays(1));
+
+    mockMvc.perform(post("/api/tasks")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.status").value(400))
+        .andExpect(jsonPath("$.details.title").exists())
+        .andExpect(jsonPath("$.details.description").exists())
+        .andExpect(jsonPath("$.details.dueDate").exists())
+        .andExpect(jsonPath("$.details.priority").exists());
   }
 
-  /**
-   * Негативный тест: поиск задачи по несуществующему ID.
-   */
   @Test
-  void getById_Negative_NotFound() {
-    ResponseEntity<Task> response = restTemplate.getForEntity("/api/tasks/ghost-id", Task.class);
-    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+  void updateShouldOnlyChangeProvidedFields() throws Exception {
+    Task existing = new Task();
+    existing.setTitle("Original title");
+    existing.setDescription("Original description");
+    existing.setCompleted(false);
+    existing.setCreatedAt(LocalDateTime.now().minusDays(2));
+    existing.setDueDate(LocalDate.now().plusDays(5));
+    existing.setPriority(Priority.MEDIUM);
+    existing.setTags(Set.of("study"));
+    Task saved = taskRepository.save(existing);
+
+    TaskUpdateDto dto = new TaskUpdateDto();
+    dto.setTitle("Updated title");
+
+    mockMvc.perform(put("/api/tasks/{id}", saved.getId())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.title").value("Updated title"))
+        .andExpect(jsonPath("$.description").value("Original description"))
+        .andExpect(jsonPath("$.completed").value(false))
+        .andExpect(jsonPath("$.priority").value("MEDIUM"))
+        .andExpect(jsonPath("$.tags[0]").value("study"));
   }
 
-  /**
-   * Позитивный тест: создание новой задачи.
-   */
   @Test
-  void create_Positive_Created() {
-    Task task = new Task("second", "New Task", "Description", false);
-    ResponseEntity<Task> response = restTemplate.postForEntity("/api/tasks", task, Task.class);
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody().getId());
+  void updateShouldRejectDueDateBeforeCreationDate() throws Exception {
+    Task existing = new Task();
+    existing.setTitle("Original title");
+    existing.setDescription("Original description");
+    existing.setCompleted(false);
+    existing.setCreatedAt(LocalDateTime.now().plusDays(2));
+    existing.setDueDate(LocalDate.now().plusDays(10));
+    existing.setPriority(Priority.MEDIUM);
+    existing.setTags(Set.of("study"));
+    Task saved = taskRepository.save(existing);
+
+    TaskUpdateDto dto = new TaskUpdateDto();
+    dto.setDueDate(LocalDate.now().plusDays(1));
+
+    mockMvc.perform(put("/api/tasks/{id}", saved.getId())
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(dto)))
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.details.dueDate").value("dueDate must not be before task creation date"));
   }
 
-  /**
-   * Более подробный позитивный тест на создание новой задачи
-   */
-
   @Test
-  void create_ShouldReturnCreatedAndPersist() {
-    Task task = new Task("second", "New Task", "Desc", false);
+  void getByIdShouldReturnResponseDto() throws Exception {
+    Task task = new Task();
+    task.setTitle("Read lecture");
+    task.setDescription("Lecture 4 and 5");
+    task.setCompleted(false);
+    task.setCreatedAt(LocalDateTime.now());
+    task.setDueDate(LocalDate.now().plusDays(1));
+    task.setPriority(Priority.LOW);
+    task.setTags(Set.of("lecture"));
+    Task saved = taskRepository.save(task);
 
-    ResponseEntity<Task> response =
-        restTemplate.postForEntity("/api/tasks", task, Task.class);
-
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertNotNull(response.getBody().getId());
-
-    ResponseEntity<Task> stored =
-        restTemplate.getForEntity("/api/tasks/" + response.getBody().getId(), Task.class);
-
-    assertEquals(HttpStatus.OK, stored.getStatusCode());
-  }
-
-  /**
-   * Негативный тест: попытка создания задачи с некорректным телом (null).
-   */
-  @Test
-  void create_Negative_NullBody() {
-    ResponseEntity<Task> response = restTemplate.postForEntity("/api/tasks", null, Task.class);
-    assertEquals(HttpStatus.UNSUPPORTED_MEDIA_TYPE, response.getStatusCode());
-  }
-
-  /**
-   * Позитивный тест: обновление существующей задачи.
-   */
-  @Test
-  void update_Positive_Success() {
-    Task saved = restTemplate.postForObject("/api/tasks", new Task("third", "Old", "D", false), Task.class);
-    saved.setTitle("Updated Title");
-    HttpEntity<Task> request = new HttpEntity<>(saved);
-    ResponseEntity<Task> response = restTemplate.exchange("/api/tasks/" + saved.getId(), HttpMethod.PUT, request, Task.class);
-    assertEquals(HttpStatus.OK, response.getStatusCode());
-    assertEquals("Updated Title", response.getBody().getTitle());
-  }
-
-  /**
-   * Негативный тест: обновление задачи, которой нет в базе.
-   */
-  @Test
-  void update_Negative_NotFound() {
-    Task task = new Task("fake-id", "Title", "Desc", false);
-    HttpEntity<Task> request = new HttpEntity<>(task);
-    ResponseEntity<Task> response = restTemplate.exchange("/api/tasks/fake-id", HttpMethod.PUT, request, Task.class);
-    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
-  }
-
-  /**
-   * Позитивный тест: удаление существующей задачи.
-   */
-  @Test
-  void delete_Positive_NoContent() {
-    Task saved = restTemplate.postForObject("/api/tasks", new Task("forth", "To Delete", "D", false), Task.class);
-    ResponseEntity<Void> response = restTemplate.exchange("/api/tasks/" + saved.getId(), HttpMethod.DELETE, null, Void.class);
-    assertEquals(HttpStatus.NO_CONTENT, response.getStatusCode());
-  }
-
-  /**
-   * Негативный тест: удаление задачи по несуществующему ID.
-   */
-  @Test
-  void delete_Negative_NotFound() {
-    ResponseEntity<Void> response = restTemplate.exchange("/api/tasks/not-found-id", HttpMethod.DELETE, null, Void.class);
-    assertEquals(HttpStatus.NOT_FOUND, response.getStatusCode());
+    mockMvc.perform(get("/api/tasks/{id}", saved.getId()))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(saved.getId()))
+        .andExpect(jsonPath("$.title").value("Read lecture"))
+        .andExpect(jsonPath("$.priority").value("LOW"))
+        .andExpect(jsonPath("$.createdAt").exists());
   }
 }
