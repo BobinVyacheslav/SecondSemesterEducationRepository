@@ -5,12 +5,23 @@ spring:
     active: dev
   main:
     allow-bean-definition-overriding: false
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+  mvc:
+    throw-exception-if-no-handler-found: true
+  web:
+    resources:
+      add-mappings: false
 
 app:
-  version: "1.0.0-SNAPSHOT"
+  version: "2.0.0"
   description: "MVP Task Manager for MIPT Spring Course"
   tasks:
     default-status: "PENDING"
+  attachments:
+    upload-dir: "uploads"
 
 spring.jackson:
   serialization:

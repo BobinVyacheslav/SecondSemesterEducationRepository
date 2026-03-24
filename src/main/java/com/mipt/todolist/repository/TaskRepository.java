@@ -11,9 +11,9 @@ import java.util.Optional;
 public interface TaskRepository {
   List<Task> findAll();
 
-  Optional<Task> findById(String id);
+  Optional<Task> findById(Long id);
 
   Task save(Task task);
 
-  void deleteById(String id);
+  void deleteById(Long id);
 }

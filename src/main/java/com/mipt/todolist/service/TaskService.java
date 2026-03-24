@@ -1,11 +1,13 @@
 package com.mipt.todolist.service;
 
+import com.mipt.todolist.exception.TaskNotFoundException;
 import com.mipt.todolist.model.Task;
 import com.mipt.todolist.repository.TaskRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -18,7 +20,7 @@ import java.util.concurrent.ConcurrentHashMap;
 @Service
 public class TaskService {
   private final TaskRepository taskRepository;
-  private final Map<String, Task> taskCache = new ConcurrentHashMap<>();
+  private final Map<Long, Task> taskCache = new ConcurrentHashMap<>();
 
   /**
    * Создает экземпляр сервиса с внедрением репозитория
@@ -61,8 +63,12 @@ public class TaskService {
    * @param id идентификатор задачи.
    * @return Optional с найденной задачей или пустой, если задача не найдена
    */
-  public Optional<Task> getTaskById(String id) {
+  public Optional<Task> getTaskById(Long id) {
     return taskRepository.findById(id);
+  }
+
+  public Task getRequiredTask(Long id) {
+    return getTaskById(id).orElseThrow(() -> new TaskNotFoundException(id));
   }
 
   /**
@@ -71,6 +77,9 @@ public class TaskService {
    * @return сохраненный объект задачи.
    */
   public Task saveTask(Task task) {
+    if (task.getCreatedAt() == null) {
+      task.setCreatedAt(LocalDateTime.now());
+    }
     Task savedTask = taskRepository.save(task);
     taskCache.put(savedTask.getId(), savedTask);
     return savedTask;
@@ -80,7 +89,7 @@ public class TaskService {
    * Удаляет задачу по идентификатору из репозитория и кэша
    * @param id идентификатор задачи для удаления
    */
-  public void deleteTask(String id) {
+  public void deleteTask(Long id) {
     taskRepository.deleteById(id);
     taskCache.remove(id);
   }
