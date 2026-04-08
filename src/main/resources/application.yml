@@ -1,8 +1,8 @@
 spring:
   application:
-    name: "MIPT-TaskManager-API"
+    name: MIPT-TaskManager-API
   profiles:
-    active: dev
+    default: dev
   main:
     allow-bean-definition-overriding: false
   servlet:
@@ -14,16 +14,107 @@ spring:
   web:
     resources:
       add-mappings: false
+  jackson:
+    serialization:
+      indent-output: true
+      write-dates-as-timestamps: false
 
 app:
-  version: "2.0.0"
-  description: "MVP Task Manager for MIPT Spring Course"
+  version: 2.0.0
+  description: MVP Task Manager for MIPT Spring Course
   tasks:
-    default-status: "PENDING"
+    default-status: PENDING
   attachments:
-    upload-dir: "uploads"
+    upload-dir: uploads
 
-spring.jackson:
-  serialization:
-    indent_output: true
-    write_dates_as_timestamps: false
+---
+spring:
+  config:
+    activate:
+      on-profile: dev
+  datasource:
+    url: jdbc:postgresql://localhost:5432/db
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+server:
+  port: 8080
+  error:
+    include-message: always
+    include-stacktrace: always
+
+logging:
+  level:
+    root: INFO
+    com.mipt.todolist: DEBUG
+    org.springframework.web: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: beans,health,info,env
+
+---
+spring:
+  config:
+    activate:
+      on-profile: test
+  datasource:
+    url: jdbc:h2:mem:todolist;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+server:
+  port: 80
+  server-header: Task-Manager-Server
+  error:
+    include-stacktrace: never
+    include-message: never
+
+logging:
+  level:
+    root: WARN
+    com.mipt.todolist: INFO
+  file:
+    name: logs/task-manager-prod.log
+  logback:
+    rollingpolicy:
+      max-history: 7
+      max-file-size: 10MB
+
+management:
+  endpoints:
+    enabled-by-default: false
+  endpoint:
+    health:
+      enabled: true

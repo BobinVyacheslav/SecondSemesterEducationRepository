@@ -1,6 +1,7 @@
 package com.mipt.todolist.service;
 
 import com.mipt.todolist.model.TaskAttachment;
+import com.mipt.todolist.repository.TaskRepository;
 import com.mipt.todolist.repository.TaskAttachmentRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.FileSystemResource;
@@ -22,12 +23,15 @@ import java.util.UUID;
 @Service
 public class AttachmentService {
   private final TaskAttachmentRepository attachmentRepository;
+  private final TaskRepository taskRepository;
   private final Path uploadDirectory;
 
   public AttachmentService(
       TaskAttachmentRepository attachmentRepository,
+      TaskRepository taskRepository,
       @Value("${app.attachments.upload-dir}") String uploadDirectory) {
     this.attachmentRepository = attachmentRepository;
+    this.taskRepository = taskRepository;
     this.uploadDirectory = Path.of(uploadDirectory).toAbsolutePath().normalize();
   }
 
@@ -47,7 +51,7 @@ public class AttachmentService {
       }
 
       TaskAttachment attachment = new TaskAttachment();
-      attachment.setTaskId(taskId);
+      attachment.setTask(taskRepository.getReferenceById(taskId));
       attachment.setFileName(originalFileName);
       attachment.setStoredFileName(storedFileName);
       attachment.setContentType(file.getContentType());
@@ -85,7 +89,7 @@ public class AttachmentService {
   }
 
   public List<TaskAttachment> getAttachmentsByTaskId(Long taskId) {
-    return attachmentRepository.findByTaskId(taskId);
+    return attachmentRepository.findByTask_Id(taskId);
   }
 
 }

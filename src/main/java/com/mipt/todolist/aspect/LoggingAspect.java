@@ -6,6 +6,7 @@ import org.aspectj.lang.annotation.Aspect;
 import org.springframework.stereotype.Component;
 
 import java.util.Arrays;
+import java.util.Collection;
 
 /**
  * Аспект для автоматического мониторинга выполнения методов в сервисном слое
@@ -25,7 +26,7 @@ public class LoggingAspect {
     String methodName = joinPoint.getSignature().getName();
     Object[] args = joinPoint.getArgs();
 
-    System.out.println("[AOP Start] Метод: " + methodName + " | Аргументы: " + Arrays.toString(args));
+    System.out.println("[AOP Start] Метод: " + methodName + " | Аргументы: " + formatArguments(args));
 
     Object result;
     try {
@@ -35,14 +36,27 @@ public class LoggingAspect {
       throw throwable;
     }
 
-    String output;
-    if (result != null) {
-      output = result.toString();
-    } else {
-      output = "void/null";
-    }
+    String output = formatValue(result);
     System.out.println("[AOP End] Метод: " + methodName + " | Результат: " + output);
 
     return result;
+  }
+
+  private String formatArguments(Object[] args) {
+    return Arrays.toString(Arrays.stream(args).map(this::formatValue).toArray());
+  }
+
+  private String formatValue(Object value) {
+    if (value == null) {
+      return "null";
+    }
+    if (value instanceof Collection<?> collection) {
+      return "Collection(size=" + collection.size() + ")";
+    }
+    String className = value.getClass().getName();
+    if (className.startsWith("com.mipt.todolist.model")) {
+      return value.getClass().getSimpleName();
+    }
+    return String.valueOf(value);
   }
 }
