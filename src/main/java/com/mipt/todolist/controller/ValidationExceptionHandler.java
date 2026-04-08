@@ -13,6 +13,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.NoHandlerFoundException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -87,6 +88,17 @@ public class ValidationExceptionHandler {
   @ExceptionHandler(NoHandlerFoundException.class)
   public ResponseEntity<ErrorResponse> handleNoHandlerFound(
       NoHandlerFoundException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
+        HttpStatus.NOT_FOUND,
+        exception.getMessage(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(NoResourceFoundException.class)
+  public ResponseEntity<ErrorResponse> handleNoResourceFound(
+      NoResourceFoundException exception,
       HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
         HttpStatus.NOT_FOUND,

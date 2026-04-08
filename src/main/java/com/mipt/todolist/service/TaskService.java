@@ -7,7 +7,6 @@ import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
 
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -77,9 +76,6 @@ public class TaskService {
    * @return сохраненный объект задачи.
    */
   public Task saveTask(Task task) {
-    if (task.getCreatedAt() == null) {
-      task.setCreatedAt(LocalDateTime.now());
-    }
     Task savedTask = taskRepository.save(task);
     taskCache.put(savedTask.getId(), savedTask);
     return savedTask;

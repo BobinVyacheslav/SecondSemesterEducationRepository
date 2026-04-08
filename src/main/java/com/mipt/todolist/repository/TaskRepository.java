@@ -1,19 +1,12 @@
 package com.mipt.todolist.repository;
 
 import com.mipt.todolist.model.Task;
-
-import java.util.List;
-import java.util.Optional;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 /**
- * Унифицированный интерфейс для работы с хранилищем задач
+ * Репозиторий для работы с задачами через Spring Data JPA.
  */
-public interface TaskRepository {
-  List<Task> findAll();
-
-  Optional<Task> findById(Long id);
-
-  Task save(Task task);
-
-  void deleteById(Long id);
+@Repository
+public interface TaskRepository extends JpaRepository<Task, Long> {
 }

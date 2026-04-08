@@ -55,13 +55,8 @@ class FeatureIntegrationTest {
 
   @BeforeEach
   void resetState() throws Exception {
-    attachmentRepository.findAll().stream()
-        .map(TaskAttachment::getId)
-        .forEach(attachmentRepository::deleteById);
-
-    taskRepository.findAll().stream()
-        .map(Task::getId)
-        .forEach(taskRepository::deleteById);
+    attachmentRepository.deleteAll();
+    taskRepository.deleteAll();
 
     Path uploadsPath = Path.of("uploads");
     if (Files.exists(uploadsPath)) {

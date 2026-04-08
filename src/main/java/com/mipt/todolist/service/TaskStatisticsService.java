@@ -1,8 +1,5 @@
 package com.mipt.todolist.service;
-
-
 import com.mipt.todolist.repository.TaskRepository;
-import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Service;
 
 /**
@@ -10,19 +7,14 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class TaskStatisticsService {
-  private final TaskRepository primaryRepo;
-  private final TaskRepository stubRepo;
+  private final TaskRepository taskRepository;
 
   /**
    * Конструктор для сервиса, инжектирующего два репозитория
-   * @param primaryRepo InMemoryTaskRepository, так как есть аннотация @Primary
-   * @param stubRepo StubTaskRepository, так как есть @Qualifier
+   * @param taskRepository основной JPA-репозиторий
    */
-
-  public TaskStatisticsService(TaskRepository primaryRepo,
-                               @Qualifier("stubRepository") TaskRepository stubRepo) {
-    this.primaryRepo = primaryRepo;
-    this.stubRepo = stubRepo;
+  public TaskStatisticsService(TaskRepository taskRepository) {
+    this.taskRepository = taskRepository;
   }
 
   /**
@@ -31,7 +23,6 @@ public class TaskStatisticsService {
    * @return Строка со статистикой
    */
   public String getComparisonReport() {
-    return String.format("Основной: %d, Заглушка: %d",
-        primaryRepo.findAll().size(), stubRepo.findAll().size());
+    return String.format("Всего задач: %d", taskRepository.findAll().size());
   }
 }

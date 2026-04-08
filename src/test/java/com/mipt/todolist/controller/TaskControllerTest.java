@@ -41,9 +41,7 @@ class TaskControllerTest {
 
   @BeforeEach
   void resetRepository() {
-    taskRepository.findAll().stream()
-        .map(Task::getId)
-        .forEach(taskRepository::deleteById);
+    taskRepository.deleteAll();
   }
 
   @Test
