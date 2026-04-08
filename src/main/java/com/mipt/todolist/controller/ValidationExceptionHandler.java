@@ -1,5 +1,6 @@
 package com.mipt.todolist.controller;
 
+import com.mipt.todolist.exception.BulkTaskCompletionException;
 import com.mipt.todolist.dto.ErrorResponse;
 import com.mipt.todolist.exception.TaskNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -110,6 +111,17 @@ public class ValidationExceptionHandler {
   @ExceptionHandler(TaskNotFoundException.class)
   public ResponseEntity<ErrorResponse> handleTaskNotFound(
       TaskNotFoundException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
+        HttpStatus.NOT_FOUND,
+        exception.getMessage(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(BulkTaskCompletionException.class)
+  public ResponseEntity<ErrorResponse> handleBulkTaskCompletionException(
+      BulkTaskCompletionException exception,
       HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
         HttpStatus.NOT_FOUND,

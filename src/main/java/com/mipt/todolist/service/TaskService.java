@@ -1,12 +1,17 @@
 package com.mipt.todolist.service;
 
+import com.mipt.todolist.exception.BulkTaskCompletionException;
 import com.mipt.todolist.exception.TaskNotFoundException;
 import com.mipt.todolist.model.Task;
 import com.mipt.todolist.repository.TaskRepository;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Isolation;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -57,6 +62,10 @@ public class TaskService {
     return taskRepository.findAll();
   }
 
+  public List<Task> getAllTasksWithAttachments() {
+    return taskRepository.findAllWithAttachments();
+  }
+
   /**
    * Ищет задачу по её уникальному идентификатору
    * @param id идентификатор задачи.
@@ -88,5 +97,23 @@ public class TaskService {
   public void deleteTask(Long id) {
     taskRepository.deleteById(id);
     taskCache.remove(id);
+  }
+
+  @Transactional(
+      propagation = Propagation.REQUIRED,
+      isolation = Isolation.READ_COMMITTED,
+      rollbackFor = BulkTaskCompletionException.class)
+  public void bulkCompleteTasks(List<Long> ids) {
+    List<Task> tasksToUpdate = new ArrayList<>();
+
+    for (Long id : ids) {
+      Task task = taskRepository.findById(id)
+          .orElseThrow(() -> new BulkTaskCompletionException(id));
+      task.setCompleted(true);
+      tasksToUpdate.add(task);
+    }
+
+    taskRepository.saveAll(tasksToUpdate);
+    tasksToUpdate.forEach(task -> taskCache.put(task.getId(), task));
   }
 }
