@@ -1,12 +1,14 @@
 package com.mipt.todolist.controller;
 
 import com.mipt.todolist.exception.TaskNotFoundException;
+import com.mipt.todolist.exception.GlobalExceptionHandler;
 import com.mipt.todolist.model.Task;
 import com.mipt.todolist.model.TaskAttachment;
 import com.mipt.todolist.service.AttachmentService;
 import com.mipt.todolist.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.context.annotation.Import;
@@ -35,7 +37,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 @WebMvcTest(AttachmentController.class)
-@Import({ValidationExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
+@AutoConfigureMockMvc(addFilters = false)
+@Import({GlobalExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
 @ActiveProfiles("test")
 class AttachmentControllerTest {
 

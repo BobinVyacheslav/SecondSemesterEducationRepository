@@ -1,22 +1,24 @@
-package com.mipt.todolist.controller;
+package com.mipt.todolist.exception;
 
-import com.mipt.todolist.exception.BulkTaskCompletionException;
 import com.mipt.todolist.dto.ErrorResponse;
-import com.mipt.todolist.exception.TaskNotFoundException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
 import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.NoHandlerFoundException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import org.springframework.web.bind.MissingServletRequestParameterException;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -25,10 +27,10 @@ import java.util.List;
 import java.util.Map;
 
 @RestControllerAdvice
-public class ValidationExceptionHandler {
+public class GlobalExceptionHandler {
   private final Environment environment;
 
-  public ValidationExceptionHandler(Environment environment) {
+  public GlobalExceptionHandler(Environment environment) {
     this.environment = environment;
   }
 
@@ -130,6 +132,39 @@ public class ValidationExceptionHandler {
         Map.of()));
   }
 
+  @ExceptionHandler(ExternalApiException.class)
+  public ResponseEntity<ErrorResponse> handleExternalApiException(
+      ExternalApiException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(buildErrorResponse(
+        HttpStatus.BAD_GATEWAY,
+        exception.getMessage(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(RequestNotPermitted.class)
+  public ResponseEntity<ErrorResponse> handleRequestNotPermitted(
+      RequestNotPermitted exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS).body(buildErrorResponse(
+        HttpStatus.TOO_MANY_REQUESTS,
+        "Rate limit exceeded",
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(CallNotPermittedException.class)
+  public ResponseEntity<ErrorResponse> handleCallNotPermitted(
+      CallNotPermittedException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(buildErrorResponse(
+        HttpStatus.SERVICE_UNAVAILABLE,
+        "Circuit breaker is open",
+        request.getRequestURI(),
+        Map.of()));
+  }
+
   @ExceptionHandler(ResponseStatusException.class)
   public ResponseEntity<ErrorResponse> handleResponseStatusException(
       ResponseStatusException exception,
@@ -138,6 +173,28 @@ public class ValidationExceptionHandler {
     return ResponseEntity.status(status).body(buildErrorResponse(
         status,
         exception.getReason() == null ? status.getReasonPhrase() : exception.getReason(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(AuthenticationException.class)
+  public ResponseEntity<ErrorResponse> handleAuthenticationException(
+      AuthenticationException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(buildErrorResponse(
+        HttpStatus.UNAUTHORIZED,
+        "Unauthorized",
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+      AccessDeniedException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(buildErrorResponse(
+        HttpStatus.FORBIDDEN,
+        "Forbidden",
         request.getRequestURI(),
         Map.of()));
   }
