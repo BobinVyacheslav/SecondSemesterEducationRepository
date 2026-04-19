@@ -3,6 +3,7 @@ package com.mipt.todolist.api;
 import com.mipt.todolist.dto.ExternalTaskCreateRequest;
 import com.mipt.todolist.dto.ExternalTaskCreatedResult;
 import com.mipt.todolist.dto.ExternalTaskResponse;
+import com.mipt.todolist.dto.GatewayProbeResponse;
 import com.mipt.todolist.service.TasksGatewayService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -62,5 +63,10 @@ public class TasksGatewayController {
     return ResponseEntity.status(503).body(Map.of(
         "message", "Delete operation is temporarily unavailable",
         "taskId", id));
+  }
+
+  @GetMapping("/unstable")
+  public ResponseEntity<GatewayProbeResponse> probeUnstable(@RequestParam String mode) {
+    return ResponseEntity.ok(tasksGatewayService.probeUnstable(mode));
   }
 }

@@ -1,6 +1,7 @@
 package com.mipt.todolist.controller;
 
 import com.mipt.todolist.dto.TaskResponseDto;
+import com.mipt.todolist.exception.GlobalExceptionHandler;
 import com.mipt.todolist.exception.TaskNotFoundException;
 import com.mipt.todolist.mapper.TaskMapper;
 import com.mipt.todolist.model.Task;
@@ -30,7 +31,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(FavoritesController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ValidationExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
+@Import({GlobalExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
 @ActiveProfiles("test")
 class FavoritesControllerTest {
 

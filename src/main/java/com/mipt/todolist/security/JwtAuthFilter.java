@@ -4,6 +4,8 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -15,6 +17,8 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 public class JwtAuthFilter extends OncePerRequestFilter {
+  private static final Logger log = LoggerFactory.getLogger(JwtAuthFilter.class);
+
   private final JwtUtils jwtUtils;
   private final UserDetailsService userDetailsService;
   private final RestAuthenticationEntryPoint restAuthenticationEntryPoint;
@@ -61,10 +65,21 @@ public class JwtAuthFilter extends OncePerRequestFilter {
       filterChain.doFilter(request, response);
     } catch (Exception exception) {
       SecurityContextHolder.clearContext();
+      log.warn("JWT validation failed for token={}", maskToken(token));
       restAuthenticationEntryPoint.commence(
           request,
           response,
           new BadCredentialsException("Invalid JWT token", exception));
     }
+  }
+
+  private String maskToken(String token) {
+    if (token == null || token.isBlank()) {
+      return "null";
+    }
+    if (token.length() <= 12) {
+      return "****";
+    }
+    return token.substring(0, 6) + "..." + token.substring(token.length() - 6);
   }
 }

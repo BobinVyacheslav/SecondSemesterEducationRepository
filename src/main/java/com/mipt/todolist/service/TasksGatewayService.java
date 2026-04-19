@@ -4,8 +4,11 @@ import com.mipt.todolist.client.ExternalTasksClient;
 import com.mipt.todolist.dto.ExternalTaskCreateRequest;
 import com.mipt.todolist.dto.ExternalTaskCreatedResult;
 import com.mipt.todolist.dto.ExternalTaskResponse;
+import com.mipt.todolist.dto.GatewayProbeResponse;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
+import io.github.resilience4j.ratelimiter.RequestNotPermitted;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -47,12 +50,18 @@ public class TasksGatewayService {
     return true;
   }
 
+  @RateLimiter(name = "externalApi")
+  @CircuitBreaker(name = "externalApi", fallbackMethod = "probeUnstableFallback")
+  public GatewayProbeResponse probeUnstable(String mode) {
+    return externalTasksClient.probeUnstable(mode);
+  }
+
   private ExternalTaskCreatedResult createTaskFallback(ExternalTaskCreateRequest request, Throwable throwable) {
     log.warn("Fallback for createTask: {}", throwable.getMessage());
     ExternalTaskResponse fallbackTask = new ExternalTaskResponse(
         null,
         request.title(),
-        "Task was not created in the external API. Fallback response.",
+        describeFallbackReason(throwable),
         false);
     return new ExternalTaskCreatedResult(fallbackTask, null);
   }
@@ -62,7 +71,7 @@ public class TasksGatewayService {
     return new ExternalTaskResponse(
         id,
         "Fallback task",
-        "External API is temporarily unavailable",
+        describeFallbackReason(throwable),
         false);
   }
 
@@ -74,5 +83,20 @@ public class TasksGatewayService {
   private boolean deleteTaskFallback(Long id, Throwable throwable) {
     log.warn("Fallback for deleteTask {}: {}", id, throwable.getMessage());
     return false;
+  }
+
+  private GatewayProbeResponse probeUnstableFallback(String mode, Throwable throwable) {
+    log.warn("Fallback for probeUnstable {}: {}", mode, throwable.getMessage());
+    return new GatewayProbeResponse(mode, "fallback", describeFallbackReason(throwable));
+  }
+
+  private String describeFallbackReason(Throwable throwable) {
+    if (throwable instanceof RequestNotPermitted) {
+      return "Rate limit exceeded. Fallback response returned.";
+    }
+    if (throwable instanceof CallNotPermittedException) {
+      return "Circuit breaker is open. Fallback response returned.";
+    }
+    return "External API is temporarily unavailable. Fallback response returned.";
   }
 }

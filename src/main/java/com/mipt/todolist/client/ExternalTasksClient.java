@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.todolist.dto.ExternalProblemDetails;
 import com.mipt.todolist.dto.ExternalTaskCreateRequest;
 import com.mipt.todolist.dto.ExternalTaskCreatedResult;
+import com.mipt.todolist.dto.GatewayProbeResponse;
 import com.mipt.todolist.dto.ExternalTaskResponse;
 import com.mipt.todolist.exception.ExternalApiException;
 import com.mipt.todolist.exception.TaskNotFoundException;
@@ -104,6 +105,23 @@ public class ExternalTasksClient {
           .accept(MediaType.APPLICATION_JSON)
           .retrieve()
           .toBodilessEntity();
+    } catch (RestClientResponseException exception) {
+      throw mapResponseException(exception);
+    } catch (UnknownContentTypeException exception) {
+      throw mapUnknownContentType(exception);
+    } catch (ResourceAccessException exception) {
+      throw new ExternalApiException("External API is unavailable", exception);
+    }
+  }
+
+  public GatewayProbeResponse probeUnstable(String mode) {
+    try {
+      String body = restClient.get()
+          .uri(uriBuilder -> uriBuilder.path("/unstable").queryParam("mode", mode).build())
+          .accept(MediaType.APPLICATION_JSON)
+          .retrieve()
+          .body(String.class);
+      return new GatewayProbeResponse(mode, "ok", body == null ? "" : body);
     } catch (RestClientResponseException exception) {
       throw mapResponseException(exception);
     } catch (UnknownContentTypeException exception) {

@@ -1,5 +1,6 @@
 package com.mipt.todolist.controller;
 
+import com.mipt.todolist.exception.GlobalExceptionHandler;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -16,7 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @WebMvcTest(PreferencesController.class)
 @AutoConfigureMockMvc(addFilters = false)
-@Import({ValidationExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
+@Import({GlobalExceptionHandler.class, com.mipt.todolist.config.ApiVersionFilter.class})
 @ActiveProfiles("test")
 class PreferencesControllerTest {
 
