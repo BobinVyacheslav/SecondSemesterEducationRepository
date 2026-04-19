@@ -9,6 +9,8 @@ import org.springframework.core.env.Environment;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -138,6 +140,28 @@ public class ValidationExceptionHandler {
     return ResponseEntity.status(status).body(buildErrorResponse(
         status,
         exception.getReason() == null ? status.getReasonPhrase() : exception.getReason(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(AuthenticationException.class)
+  public ResponseEntity<ErrorResponse> handleAuthenticationException(
+      AuthenticationException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(buildErrorResponse(
+        HttpStatus.UNAUTHORIZED,
+        "Unauthorized",
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ResponseEntity<ErrorResponse> handleAccessDeniedException(
+      AccessDeniedException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN).body(buildErrorResponse(
+        HttpStatus.FORBIDDEN,
+        "Forbidden",
         request.getRequestURI(),
         Map.of()));
   }
