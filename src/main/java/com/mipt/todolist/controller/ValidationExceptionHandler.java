@@ -2,6 +2,7 @@ package com.mipt.todolist.controller;
 
 import com.mipt.todolist.exception.BulkTaskCompletionException;
 import com.mipt.todolist.dto.ErrorResponse;
+import com.mipt.todolist.exception.ExternalApiException;
 import com.mipt.todolist.exception.TaskNotFoundException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolationException;
@@ -127,6 +128,17 @@ public class ValidationExceptionHandler {
       HttpServletRequest request) {
     return ResponseEntity.status(HttpStatus.NOT_FOUND).body(buildErrorResponse(
         HttpStatus.NOT_FOUND,
+        exception.getMessage(),
+        request.getRequestURI(),
+        Map.of()));
+  }
+
+  @ExceptionHandler(ExternalApiException.class)
+  public ResponseEntity<ErrorResponse> handleExternalApiException(
+      ExternalApiException exception,
+      HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.BAD_GATEWAY).body(buildErrorResponse(
+        HttpStatus.BAD_GATEWAY,
         exception.getMessage(),
         request.getRequestURI(),
         Map.of()));
