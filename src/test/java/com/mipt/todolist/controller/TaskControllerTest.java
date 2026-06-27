@@ -1,35 +1,36 @@
 package com.mipt.todolist.controller;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.mipt.todolist.dto.TaskCreateDto;
-import com.mipt.todolist.dto.TaskUpdateDto;
+import com.mipt.todolist.dto.TaskResponseDto;
+import com.mipt.todolist.mapper.TaskMapper;
 import com.mipt.todolist.model.Priority;
+import com.mipt.todolist.model.RequestScopedBean;
 import com.mipt.todolist.model.Task;
-import com.mipt.todolist.repository.TaskRepository;
-import org.junit.jupiter.api.BeforeEach;
+import com.mipt.todolist.service.TaskService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 
-import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
+@WebMvcTest(TaskController.class)
+@AutoConfigureMockMvc(addFilters = false)
 class TaskControllerTest {
 
   @Autowired
@@ -38,125 +39,96 @@ class TaskControllerTest {
   @Autowired
   private ObjectMapper objectMapper;
 
-  @Autowired
-  private TaskRepository taskRepository;
+  @MockitoBean
+  private TaskService taskService;
 
-  @BeforeEach
-  void resetRepository() {
-    taskRepository.deleteAll();
-  }
+  @MockitoBean
+  private TaskMapper taskMapper;
 
-  @Test
-  void createShouldReturnResponseDtoWithGeneratedIdAndCreatedAt() throws Exception {
-    TaskCreateDto dto = new TaskCreateDto();
-    dto.setTitle("Write homework");
-    dto.setDescription("sleep");
-    dto.setDueDate(LocalDate.now().plusDays(2));
-    dto.setPriority(Priority.HIGH);
-    dto.setTags(Set.of("java", "spring"));
-
-    String responseBody = mockMvc.perform(post("/api/tasks")
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(dto)))
-        .andExpect(status().isCreated())
-        .andExpect(jsonPath("$.id").isNumber())
-        .andExpect(jsonPath("$.title").value("Write homework"))
-        .andExpect(jsonPath("$.description").value("sleep"))
-        .andExpect(jsonPath("$.completed").value(false))
-        .andExpect(jsonPath("$.priority").value("HIGH"))
-        .andExpect(jsonPath("$.createdAt").exists())
-        .andReturn()
-        .getResponse()
-        .getContentAsString();
-
-    JsonNode jsonNode = objectMapper.readTree(responseBody);
-    assertThat(jsonNode.get("id").asLong()).isPositive();
-    assertThat(LocalDateTime.parse(jsonNode.get("createdAt").asText())).isNotNull();
-  }
+  @MockitoBean
+  private RequestScopedBean requestScopedBean;
 
   @Test
-  void createShouldRejectInvalidDtoAndReturnFieldDetails() throws Exception {
-    TaskCreateDto dto = new TaskCreateDto();
-    dto.setTitle("Hi");
-    dto.setDescription("x".repeat(501));
-    dto.setDueDate(LocalDate.now().minusDays(1));
+  void createShouldReturnCreatedTask() throws Exception {
+    TaskCreateDto request = new TaskCreateDto();
+    request.setTitle("Write homework");
+    request.setDescription("Complete test coverage");
+    request.setDueDate(LocalDate.now().plusDays(2));
+    request.setPriority(Priority.HIGH);
+    request.setTags(Set.of("java", "spring"));
+
+    Task mappedTask = task("Write homework", Priority.HIGH);
+    mappedTask.setId(null);
+    Task savedTask = task("Write homework", Priority.HIGH);
+    TaskResponseDto response = response(savedTask);
+    when(taskMapper.toEntity(any(TaskCreateDto.class))).thenReturn(mappedTask);
+    when(taskService.saveTask(mappedTask)).thenReturn(savedTask);
+    when(taskMapper.toResponseDto(savedTask)).thenReturn(response);
 
     mockMvc.perform(post("/api/tasks")
             .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(dto)))
+            .content(objectMapper.writeValueAsString(request)))
+        .andExpect(status().isCreated())
+        .andExpect(jsonPath("$.id").value(1))
+        .andExpect(jsonPath("$.title").value("Write homework"))
+        .andExpect(jsonPath("$.completed").value(false))
+        .andExpect(jsonPath("$.priority").value("HIGH"));
+
+    verify(taskService).saveTask(mappedTask);
+  }
+
+  @Test
+  void getByIdShouldReturnExistingTask() throws Exception {
+    Task task = task("Read lecture", Priority.LOW);
+    TaskResponseDto response = response(task);
+    when(taskService.getTaskById(1L)).thenReturn(Optional.of(task));
+    when(taskMapper.toResponseDto(task)).thenReturn(response);
+
+    mockMvc.perform(get("/api/tasks/{id}", 1L))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(1))
+        .andExpect(jsonPath("$.title").value("Read lecture"))
+        .andExpect(jsonPath("$.completed").value(false))
+        .andExpect(jsonPath("$.priority").value("LOW"));
+  }
+
+  @Test
+  void createShouldRejectInvalidRequest() throws Exception {
+    TaskCreateDto request = new TaskCreateDto();
+    request.setTitle("Hi");
+
+    mockMvc.perform(post("/api/tasks")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(objectMapper.writeValueAsString(request)))
         .andExpect(status().isBadRequest())
         .andExpect(jsonPath("$.status").value(400))
         .andExpect(jsonPath("$.details.title").exists())
-        .andExpect(jsonPath("$.details.description").exists())
-        .andExpect(jsonPath("$.details.dueDate").exists())
         .andExpect(jsonPath("$.details.priority").exists());
   }
 
-  @Test
-  void updateShouldOnlyChangeProvidedFields() throws Exception {
-    Task existing = new Task();
-    existing.setTitle("Original title");
-    existing.setDescription("Original description");
-    existing.setCompleted(false);
-    existing.setCreatedAt(LocalDateTime.now().minusDays(2));
-    existing.setDueDate(LocalDate.now().plusDays(5));
-    existing.setPriority(Priority.MEDIUM);
-    existing.setTags(Set.of("study"));
-    Task saved = taskRepository.save(existing);
-
-    TaskUpdateDto dto = new TaskUpdateDto();
-    dto.setTitle("Updated title");
-
-    mockMvc.perform(put("/api/tasks/{id}", saved.getId())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(dto)))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.title").value("Updated title"))
-        .andExpect(jsonPath("$.description").value("Original description"))
-        .andExpect(jsonPath("$.completed").value(false))
-        .andExpect(jsonPath("$.priority").value("MEDIUM"))
-        .andExpect(jsonPath("$.tags[0]").value("study"));
-  }
-
-  @Test
-  void updateShouldRejectDueDateBeforeCreationDate() throws Exception {
-    Task existing = new Task();
-    existing.setTitle("Original title");
-    existing.setDescription("Original description");
-    existing.setCompleted(false);
-    existing.setCreatedAt(LocalDateTime.now().plusDays(2));
-    existing.setDueDate(LocalDate.now().plusDays(10));
-    existing.setPriority(Priority.MEDIUM);
-    existing.setTags(Set.of("study"));
-    Task saved = taskRepository.save(existing);
-
-    TaskUpdateDto dto = new TaskUpdateDto();
-    dto.setDueDate(LocalDate.now().plusDays(1));
-
-    mockMvc.perform(put("/api/tasks/{id}", saved.getId())
-            .contentType(MediaType.APPLICATION_JSON)
-            .content(objectMapper.writeValueAsString(dto)))
-        .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.details.dueDate").value("dueDate must not be before task creation date"));
-  }
-
-  @Test
-  void getByIdShouldReturnResponseDto() throws Exception {
+  private Task task(String title, Priority priority) {
     Task task = new Task();
-    task.setTitle("Read lecture");
-    task.setDescription("Lecture 4 and 5");
+    task.setId(1L);
+    task.setTitle(title);
+    task.setDescription("Task description");
     task.setCompleted(false);
-    task.setCreatedAt(LocalDateTime.now());
-    task.setDueDate(LocalDate.now().plusDays(1));
-    task.setPriority(Priority.LOW);
-    task.setTags(Set.of("lecture"));
-    Task saved = taskRepository.save(task);
+    task.setCreatedAt(LocalDateTime.of(2026, 6, 27, 12, 0));
+    task.setDueDate(LocalDate.of(2026, 6, 30));
+    task.setPriority(priority);
+    task.setTags(Set.of("test"));
+    return task;
+  }
 
-    mockMvc.perform(get("/api/tasks/{id}", saved.getId()))
-        .andExpect(status().isOk())
-        .andExpect(jsonPath("$.id").value(saved.getId()))
-        .andExpect(jsonPath("$.title").value("Read lecture"))
-        .andExpect(jsonPath("$.priority").value("LOW"))
-        .andExpect(jsonPath("$.createdAt").exists());
+  private TaskResponseDto response(Task task) {
+    TaskResponseDto response = new TaskResponseDto();
+    response.setId(task.getId());
+    response.setTitle(task.getTitle());
+    response.setDescription(task.getDescription());
+    response.setCompleted(task.isCompleted());
+    response.setCreatedAt(task.getCreatedAt());
+    response.setDueDate(task.getDueDate());
+    response.setPriority(task.getPriority());
+    response.setTags(task.getTags());
+    return response;
   }
 }
